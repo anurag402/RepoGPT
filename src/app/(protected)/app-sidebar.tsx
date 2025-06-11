@@ -27,7 +27,7 @@ import {
   LayoutDashboard,
   Presentation,
 } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import useProject from "@/hooks/use-project";
 
 const items = [
@@ -132,7 +132,10 @@ export default function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <div
                         className="flex w-full items-center gap-2 overflow-hidden hover:cursor-pointer"
-                        onClick={() => setProjectId(project.id)}
+                        onClick={() => {
+                          setProjectId(project.id);
+                          redirect('/dashboard')
+                        }}
                       >
                         <div
                           className={cn(
