@@ -43,8 +43,8 @@ export const projectRouter = createTRPCRouter({
           },
         },
       });
-      await indexGithubRepo(project.id, input.githubUrl, input.githubToken);
       await pollCommits(project.id);
+      await indexGithubRepo(project.id, input.githubUrl, input.githubToken);
       await ctx.db.user.update({
         where: {
           id: ctx.user.userId!,

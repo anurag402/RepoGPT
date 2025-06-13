@@ -37,7 +37,7 @@ export const getCommitHashes = async (githubUrl: string): Promise<Response[]> =>
 }
 
 const MAX_COMMITS = 10;
-const DELAY_MS = 3000;
+const DELAY_MS = 2000;
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
