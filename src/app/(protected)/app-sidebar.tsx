@@ -134,7 +134,7 @@ export default function AppSidebar() {
                         className="flex w-full items-center gap-2 overflow-hidden hover:cursor-pointer"
                         onClick={() => {
                           setProjectId(project.id);
-                          redirect('/dashboard')
+                          redirect("/dashboard");
                         }}
                       >
                         <div
