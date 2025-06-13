@@ -3,11 +3,20 @@ import { Document } from "@langchain/core/documents";
 import { generateEmbedding, summariseCode } from "./gemini";
 import { db } from "@/server/db";
 import { Octokit } from "octokit";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+const API_KEYS = [
+  process.env.GEMINI_API_KEY!,
+  process.env.GEMINI_API_KEY_2!,
+  process.env.GEMINI_API_KEY_3!,
+  process.env.GEMINI_API_KEY_4!,
+  process.env.GEMINI_API_KEY_5!,
+];
 
 export async function getFileCount(
   githubOwner: string,
   githubRepo: string,
-  octokit: Octokit
+  octokit: Octokit,
 ): Promise<number> {
   const { data: repo } = await octokit.rest.repos.get({
     owner: githubOwner,
@@ -32,15 +41,14 @@ export async function getFileCount(
     recursive: "true",
   });
 
-  const fileCount = treeData.tree.filter((item) => item.type === "blob")
-    .length;
+  const fileCount = treeData.tree.filter((item) => item.type === "blob").length;
 
   return fileCount;
 }
 
 export const checkCredits = async (
   githubUrl: string,
-  githubToken?: string
+  githubToken?: string,
 ): Promise<number> => {
   const octokit = new Octokit({
     auth: process.env.GITHUB_TOKEN!,
@@ -108,14 +116,20 @@ export const indexGithubRepo = async (
   );
 };
 
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-const generateEmbeddings = async (docs: Document[]) => {
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const genAIClients = API_KEYS.map((key) => new GoogleGenerativeAI(key));
+
+export const generateEmbeddings = async (docs: Document[]) => {
   const results = [];
 
-  for (const doc of docs) {
+  for (let i = 0; i < docs.length; i++) {
+    const client = genAIClients[i % genAIClients.length];
+    const doc = docs[i];
+    if (!doc) continue;
     try {
-      const summary = await summariseCode(doc);
-      const embedding = await generateEmbedding(summary);
+      const summary = await summariseCode(doc, client);
+      const embedding = await generateEmbedding(summary, client);
+
       results.push({
         summary,
         embedding,
@@ -125,7 +139,8 @@ const generateEmbeddings = async (docs: Document[]) => {
     } catch (err) {
       console.error(`Failed for ${doc.metadata.source}:`, err);
     }
-    await delay(2000);
+
+    await delay(450);
   }
 
   return results;
