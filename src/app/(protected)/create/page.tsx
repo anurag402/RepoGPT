@@ -1,4 +1,5 @@
 "use client";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import useRefetch from "@/hooks/use-refetch";
@@ -17,41 +18,50 @@ type FormInput = {
 
 const CreatePage = () => {
   const { register, handleSubmit, reset } = useForm<FormInput>();
-  const createProject = api.project.createProject.useMutation();
-  const checkCredits = api.project.checkCredites.useMutation();
   const refetch = useRefetch();
+  const [creditChecked, setCreditChecked] = useState(false);
 
-  function onSubmit(data: FormInput) {
-    if (!!checkCredits.data) {
-      createProject.mutate(
-        {
-          name: data.projectName,
-          githubUrl: data.repoUrl,
-          githubToken: data.githubToken,
-        },
-        {
-          onSuccess: () => {
-            toast.success("Project created successfully!");
-            refetch();
-            reset();
-          },
-          onError: () => {
-            toast.error("Failed to create project");
-          },
-        },
-      );
-    } else {
+  const checkCredits = api.project.checkCredites.useMutation({
+    onSuccess: (data) => {
+      setCreditChecked(true);
+    },
+    onError: () => {
+      toast.error("Failed to check credits");
+    },
+  });
+
+  const createProject = api.project.createProject.useMutation({
+    onSuccess: () => {
+      toast.success("Project created successfully!");
+      refetch();
+      reset();
+      setCreditChecked(false); // reset flow
+    },
+    onError: () => {
+      toast.error("Failed to create project");
+    },
+  });
+
+  const onSubmit = (data: FormInput) => {
+    if (!creditChecked) {
       checkCredits.mutate({
         githubUrl: data.repoUrl,
         githubToken: data.githubToken,
       });
+    } else {
+      createProject.mutate({
+        name: data.projectName,
+        githubUrl: data.repoUrl,
+        githubToken: data.githubToken,
+      });
     }
-    return true;
-  }
+  };
 
-  const hasEnoughCredits = checkCredits.data?.userCredits
-    ? checkCredits.data?.fileCount <= checkCredits.data?.userCredits
-    : true;
+  const isLoading = checkCredits.isPending || createProject.isPending;
+  const hasEnoughCredits =
+    checkCredits.data?.userCredits != null
+      ? checkCredits.data.fileCount <= checkCredits.data.userCredits
+      : true;
 
   return (
     <div className="flex min-h-[80vh] flex-col items-center justify-center rounded-4xl bg-[#191B1E] p-4 md:flex-row">
@@ -89,7 +99,7 @@ const CreatePage = () => {
             placeholder="GitHub Token (Optional)"
           />
 
-          {checkCredits.data && (
+          {creditChecked && checkCredits.data && (
             <div className="mt-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-2 text-orange-700 transition-all duration-300">
               <div className="flex items-center gap-2">
                 <Info className="size-4" />
@@ -109,18 +119,14 @@ const CreatePage = () => {
           <Button
             type="submit"
             className="mt-4 flex items-center justify-center"
-            disabled={
-              createProject.isPending ||
-              checkCredits.isPending ||
-              !hasEnoughCredits
-            }
+            disabled={isLoading || !hasEnoughCredits}
           >
-            {createProject.isPending || checkCredits.isPending ? (
+            {isLoading ? (
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Loading…</span>
               </div>
-            ) : !!checkCredits.data ? (
+            ) : creditChecked ? (
               "Create Project"
             ) : (
               "Check Credits"
